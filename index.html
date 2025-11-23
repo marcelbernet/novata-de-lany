@@ -2,7 +2,7 @@
 <html lang="ca">
 <head>
     <meta charset="UTF-8">
-    <title>LA NOVATA DE L'ANY</title>
+    <title>LA NOVATA DE L'ANY - HYBRID V3</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -25,7 +25,7 @@
         body {
             margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main);
             font-family: 'Roboto Mono', monospace; overflow: hidden; height: 100vh;
-            display: grid; grid-template-columns: 250px 1fr 250px; grid-template-rows: 80px 1fr 160px;
+            display: grid; grid-template-columns: 250px 1fr 250px; grid-template-rows: 80px 1fr 180px;
             transition: background-color 1.5s ease;
         }
 
@@ -66,13 +66,26 @@
         }
         #calc-container {
             display: flex; flex-direction: column; font-size: 0.75rem; color: #888; 
-            margin-right: 20px; padding-right: 20px; border-right: 1px solid #333; text-align: right; min-width: 140px;
+            margin-right: 20px; padding-right: 20px; border-right: 1px solid #333; text-align: right; min-width: 120px;
         }
         .calc-row { display: flex; justify-content: space-between; gap: 15px; }
         .calc-val { font-weight: bold; color: var(--text-main); }
         .calc-val.pos { color: var(--neon-secondary); }
         .calc-val.neg { color: #ff0055; }
 
+        /* MODIFIER GRID */
+        #mod-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-right: 20px;
+        }
+        .mod-btn {
+            font-size: 0.7rem; font-family: 'Roboto Mono'; background: #111; border: 1px solid #444; color: #888;
+            padding: 5px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;
+        }
+        .mod-btn:hover { background: #222; }
+        .mod-btn.active { border-color: var(--neon-primary); color: var(--neon-primary); background: rgba(0, 243, 255, 0.1); }
+        .mod-btn.green:active, .mod-btn.green.flash { background: var(--neon-secondary); color: black; }
+        .mod-btn.red:active, .mod-btn.red.flash { background: #ff0055; color: white; }
+        
         /* UI ELEMENTS */
         .card {
             background: rgba(255,255,255,0.05); border-left: 3px solid #444; margin-bottom: 8px; padding: 8px; font-size: 0.85rem; transition: 0.3s;
@@ -87,10 +100,6 @@
         .btn-primary { border-color: var(--neon-secondary); color: var(--neon-secondary); box-shadow: 0 0 5px var(--neon-secondary); }
         .btn-primary:hover { background: var(--neon-secondary); color: #000; }
         
-        #lang-btn { 
-            z-index: 100; font-size: 0.8rem; padding: 5px 10px; margin-left: 15px;
-        }
-
         #prob-disp { font-size: 2.5rem; font-weight: bold; color: var(--neon-secondary); margin: 0 20px; width: 120px; text-align: right; }
 
         /* OVERLAYS */
@@ -102,11 +111,16 @@
             font-family: 'Orbitron'; font-size: 4rem; color: transparent; -webkit-text-stroke: 2px var(--neon-primary);
             text-shadow: 0 0 30px var(--neon-primary); text-align: center;
         }
-        #setup-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 300;
+        #setup-overlay, #objective-overlay, #rules-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 300;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
+        #rules-overlay { display: none; padding: 40px; text-align: left; align-items: flex-start; overflow-y: auto; z-index: 500; }
+        
         input { background: #222; border: 1px solid #555; color: white; padding: 10px; width: 600px; margin: 10px; font-family: 'Roboto Mono'; text-align: center; }
+        
+        .obj-row { display: flex; align-items: center; justify-content: space-between; width: 500px; margin-bottom: 10px; background: #111; padding: 10px; border: 1px solid #333; }
+        .obj-input { width: 80px; margin: 0; text-align: right; }
 
         /* DRAMA OVERLAY */
         #drama-overlay {
@@ -158,7 +172,8 @@
                     <div id="chaos-bar" style="height:100%; width:0%; background:var(--neon-secondary); transition:1s"></div>
                 </div>
             </div>
-            <button id="lang-btn" class="btn" onclick="game.toggleLanguage()">EN / CA</button>
+            <button class="btn" onclick="game.toggleRules()" style="margin-left:15px; border-radius:50%; width:35px; height:35px; padding:0; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.2rem">?</button>
+            <button id="lang-btn" class="btn" onclick="game.toggleLanguage()" style="margin-left:10px">EN / CA</button>
         </div>
     </header>
 
@@ -195,19 +210,26 @@
                 <div class="calc-row"><span id="lbl-base">BASE</span><span id="c-base" class="calc-val">--</span></div>
                 <div class="calc-row"><span id="lbl-diff">DIF</span><span id="c-diff" class="calc-val neg">--</span></div>
                 <div class="calc-row"><span id="lbl-chaos">CAOS</span><span id="c-chaos" class="calc-val pos">--</span></div>
-                <div class="calc-row"><span id="lbl-boost">BOOST</span><span id="c-boost" class="calc-val pos">--</span></div>
+                <div class="calc-row"><span id="lbl-boost">CARDS</span><span id="c-boost" class="calc-val pos">--</span></div>
             </div>
             
-            <div style="display:flex; gap:10px">
-                <button class="btn" id="btn-beer" onclick="game.buyBoost('beer')">CERVESA €2</button>
-                <button class="btn" id="btn-shot" onclick="game.buyBoost('shot')">XUPITO €5</button>
+            <div id="mod-grid">
+                <button class="mod-btn green" onclick="game.addMod(10)">+10%</button>
+                <button class="mod-btn green" onclick="game.addMod(20)">+20%</button>
+                <button class="mod-btn red" onclick="game.addMod(-10)">-10%</button>
+                <button class="mod-btn red" onclick="game.addMod(-20)">-20%</button>
+                
+                <button class="mod-btn" id="btn-pop" onclick="game.togglePop()" title="POPULAR: Ignora Distància">POP</button>
+                <button class="mod-btn" id="btn-fire" onclick="game.toggleFire()" title="ON FIRE: Retry on fail">FIRE</button>
+                <button class="mod-btn" onclick="game.resetMods()" title="Reset Modifiers">RST</button>
+                <button class="mod-btn" style="color:#ffaa00; border-color:#ffaa00" onclick="game.enableCutMode()" title="Tallar Vincle (Eliminar Aresta)">TALLAR</button>
             </div>
 
             <div id="prob-disp">0%</div>
 
             <div style="display:flex; gap:10px">
                 <button class="btn" id="btn-pass" onclick="game.passTurn()">PASSAR</button>
-                <button class="btn btn-primary" id="btn-roll" onclick="game.startSequence()">TIRAR LA CANYA</button>
+                <button class="btn btn-primary" id="btn-roll" onclick="game.startSequence()">TIRAR</button>
             </div>
         </div>
     </div>
@@ -221,6 +243,50 @@
             <div id="drama-loader-container"><div id="drama-loader-bar"></div></div>
         </div>
         <div id="drama-result-text">ÈXIT</div>
+    </div>
+
+    <div id="objective-overlay" style="display:none;">
+        <h1 style="color:var(--neon-secondary); font-family:'Orbitron'">AVALUACIÓ D'OBJECTIUS</h1>
+        <p style="color:#888; margin-bottom:20px">Introdueix els punts guanyats per Objectius Globals Secrets:</p>
+        <div id="obj-list-container"></div>
+        <button class="btn btn-primary" onclick="game.finalizeGame()">CONFIRMAR I FINALITZAR</button>
+    </div>
+    
+    <div id="rules-overlay">
+        <div style="max-width:800px; width:100%; background:#111; padding:30px; border:1px solid var(--neon-primary); box-shadow:0 0 20px rgba(0,243,255,0.2);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px">
+                <h2 style="margin:0; color:var(--neon-primary); font-family:'Orbitron'">MANUAL HÍBRID</h2>
+                <button onclick="game.toggleRules()" class="btn">TANCAR</button>
+            </div>
+            <div style="font-family:'Roboto Mono'; font-size:0.9rem; color:#ccc; line-height:1.6">
+                <h3 style="color:var(--neon-secondary)">1. PREPARACIÓ</h3>
+                <ul style="list-style:none; padding-left:10px">
+                    <li>- <strong>2x</strong> Cartes Objectiu Global (Secrets)</li>
+                    <li>- <strong>5x</strong> Cartes Instantànies (Mà inicial)</li>
+                    <li>- Roba <strong>+1 Instantània</strong> cada nova festa.</li>
+                    <li>- A CARNAVAL, roba <strong>+1 Objectiu Global</strong>.</li>
+                </ul>
+                <hr style="border-color:#333">
+                
+                <h3 style="color:var(--neon-secondary)">2. CARTES INSTANTÀNIES (Efectes)</h3>
+                <ul style="list-style:none; padding-left:10px">
+                    <li><strong style="color:#0aff68">[BOOST] (+10% / +20%)</strong>: Suma probabilitat (Acumulables). Clica els botons verds.</li>
+                    <li><strong style="color:#ff0055">[NERF] (-10% / -20%)</strong>: Resta probabilitat al rival. Clica botons vermells.</li>
+                    <li><strong style="color:#00f3ff">[POPULAR]</strong>: Ignora la distància màxima (3). Activa el botó <strong>POP</strong>.</li>
+                    <li><strong style="color:#ffaa00">[ON FIRE]</strong>: Si falles, pots reintentar immediatament. Activa el botó <strong>FIRE</strong>.</li>
+                    <li><strong style="color:#fff">[TISORES]</strong>: Talla un vincle existent entre dos nodes. Botó <strong>TALLAR</strong>. <em>(No gasta torn)</em>.</li>
+                </ul>
+                <hr style="border-color:#333">
+                
+                <h3 style="color:var(--neon-secondary)">3. PUNTUACIÓ FINAL (Objectius)</h3>
+                <ul style="list-style:none; padding-left:10px">
+                    <li><strong>[20 PTS]</strong> Connectar amb algú específic (ex: Novak).</li>
+                    <li><strong>[30 PTS]</strong> XARXA LOCAL: Connectar amb 4 persones de Grau 2 (Només 2 connexions).</li>
+                    <li><strong>[40 PTS]</strong> Connectar amb 2 Professors diferents.</li>
+                    <li><strong>[30 PTS]</strong> Connectar amb el node daurat a Hawaii.</li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <div id="credits-overlay">
@@ -250,23 +316,23 @@ const TEXTS = {
         sys_init: "SISTEMA INICIALITZAT",
         protocol: "PROTOCOL",
         chaos_level: "NIVELL DE CAOS",
-        drunk_level: "BORRATXERA",
+        hype_level: "NIVELL DE HYPE",
         queue: "CUA",
-        waiting: "ESPERANT INPUT...",
+        waiting: "ESPERANT JUGADOR...",
         target: "OBJECTIU",
         select_node: "SELECCIONA NODE",
         click_interact: "Clica algú per interactuar",
+        cut_mode: "MODE TALLAR: Clica dos nodes connectats",
         base: "BASE",
         diff: "DIF",
         chaos: "CAOS",
-        boost: "BOOST",
-        beer: "CERVESA €2",
-        shot: "XUPITO €5",
+        boost: "CARDS",
         pass: "PASSAR",
-        roll: "TIRAR LA CANYA",
+        roll: "ACCIONAR",
         success: "ÈXIT",
         rejected: "REBUTJAT",
-        calculating: "CALCULANT...",
+        retry: "ON FIRE: REINTENTA!",
+        calculating: "SOCIALITZANT...",
         winner_title: "LA NOVATA DE L'ANY",
         saving: "Graf guardat com a imatge...",
         streak: "RATXA ACTUAL",
@@ -283,12 +349,15 @@ const TEXTS = {
         notify_too_far: "MASSA LLUNY (Dist > 3)",
         notify_deg1: "HAN DE SER SOLITARIS (Grau 1)",
         notify_owned: "JA EL TENS!",
+        notify_card: "ROBAR CARTA GLOBAL!",
         log_conn: "connecta amb",
         log_rej: "ha sigut rebutjat per",
         log_pass: "passa.",
+        log_cut: "ha tallat el vincle entre",
         mode_time: "MODE CONTRARRELLOTGE",
+        action_free: "VINCLE TALLAT (ACCIÓ GRATUÏTA)",
         parties: ["FESTA DE NOVATOS", "FESTA DE NADAL", "FESTA DE CARNAVAL", "FMESTA GRAN", "FESTA HAWAIIANA"],
-        phrases: ["Trencant el gel...", "Demanant 'Despacito'...", "Ballant el robot...", "Fent contacte visual...", "Arreglant-se el cabell...", "Comprant una copa...", "Fent finger guns...", "Buscant encenedor...", "Cha Cha Real Smooth...", "Fent-se l'interessant...", "Mirada de tigre...", "Sortint a fumar..."],
+        phrases: ["Trencant el gel...", "Demanant 'Despacito'...", "Ballant el robot...", "Fent contacte visual...", "Arreglant-se el cabell...", "Invasió de l'espai personal...", "Fent finger guns...", "Buscant encenedor...", "Cha Cha Real Smooth...", "Fent-se l'interessant...", "Mirada de tigre...", "Sortint a fumar..."],
         rank: "POSICIÓ"
     },
     'en': {
@@ -299,23 +368,23 @@ const TEXTS = {
         sys_init: "SYSTEM INITIALIZED",
         protocol: "PROTOCOL",
         chaos_level: "CHAOS LEVEL",
-        drunk_level: "DRUNKENNESS",
+        hype_level: "HYPE LEVEL",
         queue: "QUEUE",
-        waiting: "WAITING FOR INPUT...",
+        waiting: "WAITING FOR PLAYER...",
         target: "TARGET",
         select_node: "SELECT NODE",
         click_interact: "Click someone to interact",
+        cut_mode: "CUT MODE: Click two connected nodes",
         base: "BASE",
         diff: "DIFF",
         chaos: "CHAOS",
-        boost: "BOOST",
-        beer: "BEER €2",
-        shot: "SHOT €5",
+        boost: "CARDS",
         pass: "PASS",
-        roll: "MAKE A MOVE",
+        roll: "ACTION",
         success: "SUCCESS",
         rejected: "REJECTED",
-        calculating: "CALCULATING...",
+        retry: "ON FIRE: RETRY!",
+        calculating: "SOCIALIZING...",
         winner_title: "ROOKIE OF THE YEAR",
         saving: "Graph saved as image...",
         streak: "CURRENT STREAK",
@@ -332,10 +401,13 @@ const TEXTS = {
         notify_too_far: "TOO FAR (Dist > 3)",
         notify_deg1: "MUST BE LONERS (Deg 1)",
         notify_owned: "ALREADY YOURS!",
+        notify_card: "DRAW GLOBAL CARD!",
         log_conn: "connected with",
         log_rej: "was rejected by",
         log_pass: "passes.",
+        log_cut: "severed tie between",
         mode_time: "TIME TRIAL MODE",
+        action_free: "LINK SEVERED (FREE ACTION)",
         parties: ["FRESHMAN PARTY", "CHRISTMAS PARTY", "CARNIVAL PARTY", "BIG FMESTA", "HAWAIIAN PARTY"],
         phrases: ["Breaking the ice...", "Requesting 'Despacito'...", "Doing the Robot...", "Making eye contact...", "Fixing hair...", "Buying a drink...", "Finger guns...", "Looking for a light...", "Cha Cha Real Smooth...", "Acting cool...", "Tiger eyes...", "Going for a smoke..."],
         rank: "RANK"
@@ -343,7 +415,6 @@ const TEXTS = {
 };
 
 const CONFIG = {
-    budgetStart: 40, 
     maxTurnsPerParty: 3,
     students: ["Cabanes", "Alexi", "Novak", "Nora", "Raül", "Albert", "Ferran", "Paco", "Ciscu", "Laure", "Alex", "Manyer", "Deivid", "Maçó", "Cospi", "Francesc", "Jordi", "Mireia", "Laia", "Pol", "Guim", "Aina", "Martí", "Quim", "Ona", "Biel", "Montserrat", "Sergi", "Núria", "Xavi", "Berta", "Julia", "Roger", "Carla", "Anna"],
     professors: ["Roura", "Miliki", "Casanellas", "Tyrion"],
@@ -355,12 +426,11 @@ const CONFIG = {
 
 class Player {
     constructor(id, name, color) {
-        this.id=id; this.name=name; this.color=color; this.score=0; this.budget=CONFIG.budgetStart;
+        this.id=id; this.name=name; this.color=color; this.score=0;
         this.nodeId=null; this.turnsThisParty=0; this.hasGrant=false; 
         this.fixedPoints = 0;
         this.fmeMultiplier = 1.0;
-        this.savedBudget = 0;
-        this.drunkenness = 0;
+        this.hype = 0; 
         this.streak = 0;
     }
 }
@@ -381,8 +451,10 @@ class Edge { constructor(s, t, o=null) { this.source=s; this.target=t; this.owne
 
 const game = {
     canvas: document.getElementById('graphCanvas'), ctx: document.getElementById('graphCanvas').getContext('2d'),
-    nodes: [], edges: [], players: [], queue: [], partyIndex: 0, chaos: 0, currentPlayer: null, targetNode: null, currentBoost: 0,
-    width: 0, height: 0, cliques: [], camera: { x: 0, y: 0, zoom: 1, isDragging: false, lastX: 0, lastY: 0 },
+    nodes: [], edges: [], players: [], queue: [], partyIndex: 0, chaos: 0, currentPlayer: null, targetNode: null, 
+    activeModifiers: { val: 0, popular: false, onFire: false },
+    cutMode: { active: false, firstNode: null },
+    width: 0, height: 0, camera: { x: 0, y: 0, zoom: 1, isDragging: false, lastX: 0, lastY: 0 },
     processing: false, isFMEstaMode: false, fmestaScores: {},
     lang: 'ca',
 
@@ -402,25 +474,22 @@ const game = {
         document.getElementById('label-target').innerText = T.target;
         document.getElementById('lbl-base').innerText = T.base;
         document.getElementById('lbl-diff').innerText = T.diff;
-        document.getElementById('lbl-chaos').innerText = this.isFMEstaMode ? T.drunk_level : T.chaos;
-        document.getElementById('label-chaos-bar').innerText = this.isFMEstaMode ? T.drunk_level : T.chaos_level;
+        document.getElementById('lbl-chaos').innerText = this.isFMEstaMode ? T.hype_level : T.chaos;
+        document.getElementById('label-chaos-bar').innerText = this.isFMEstaMode ? T.hype_level : T.chaos_level;
         document.getElementById('lbl-boost').innerText = T.boost;
-        document.getElementById('btn-beer').innerText = T.beer;
-        document.getElementById('btn-shot').innerText = T.shot;
         document.getElementById('btn-pass').innerText = T.pass;
         document.getElementById('btn-roll').innerText = T.roll;
         document.getElementById('drama-flavor').innerText = T.calculating;
         document.getElementById('winner-title-text').innerText = T.winner_title;
         document.getElementById('saving-text').innerText = T.saving;
         
-        // Update dynamic content if game running
         if(this.partyIndex !== undefined) {
              document.getElementById('party-title').innerText = `${T.sys_init} - ${T.protocol}: ${T.parties[this.partyIndex]}`;
              document.getElementById('trans-text').innerText = T.parties[this.partyIndex];
         }
         if(!this.currentPlayer) document.getElementById('msg-idle').innerText = T.waiting;
-        else this.updateControlDeck(); // Refresh deck texts
-        this.updateUI(); // Refresh Queue texts
+        else this.updateControlDeck(); 
+        this.updateUI(); 
     },
 
     initGame() {
@@ -456,11 +525,10 @@ const game = {
         this.isFMEstaMode = (index === 3);
         document.body.className = `theme-${index}`;
         
-        this.updateTexts(); // Refresh party title
+        this.updateTexts();
         const ov = document.getElementById('transition-overlay');
         ov.style.opacity = 1; setTimeout(() => ov.style.opacity = 0, 2500);
 
-        if(index > 0 && index !== 3) this.players.forEach(p => p.budget += 5);
         this.nodes.forEach(n => n.isGolden = false);
 
         if(index === 1) { // NADAL
@@ -468,16 +536,19 @@ const game = {
              this.notify(this.t('notify_prof'), "red");
         }
 
-        if(index === 2 || index === 4) { // CARNAVAL i HAWAIIANA
+        if(index === 2) { // CARNAVAL (Extra Card)
             this.assignGoldenNodes();
+            this.notify(this.t('notify_card'), "var(--neon-primary)");
         }
+
+        if(index === 4) this.assignGoldenNodes();
 
         if(index === 3) { // FMESTA GRAN
             this.startFMEstaMode();
         }
 
         this.players.forEach(p => {
-            p.turnsThisParty = 0; p.drunkenness = 0; p.streak = 0;
+            p.turnsThisParty = 0; p.hype = 0; p.streak = 0;
         });
 
         let sorted = [...this.players];
@@ -486,7 +557,7 @@ const game = {
         else sorted.sort(() => Math.random() - 0.5);
         
         this.queue = sorted.map(p => p.id);
-        this.detectCliques(); this.updateUI(); this.nextTurn();
+        this.updateUI(); this.nextTurn();
     },
 
     assignGoldenNodes() {
@@ -503,25 +574,23 @@ const game = {
         this.fmestaScores = {};
         this.players.forEach(p => {
             this.fmestaScores[p.id] = 0;
-            p.savedBudget = p.budget; p.budget = 20;
         });
         this.nodes.forEach(n => { if(n.type !== 'player') n.hidden = true; });
         this.edges.forEach(e => e.hidden = true);
 
-        // --- NEW: ONLY 10 NODES WITH FAMOUS NAMES ---
+        // ONLY 10 NODES WITH FAMOUS NAMES
         for(let i=0; i<CONFIG.celebrities.length; i++) {
             const n = new Node(this.nodes.length, CONFIG.celebrities[i], 'student', (Math.random()-0.5)*600, (Math.random()-0.5)*500);
             n.isTemporary = true;
-            n.coolness = 25; // High base coolness
+            n.coolness = 25; 
             this.nodes.push(n);
         }
         
-        document.getElementById('lbl-chaos').innerText = this.t('drunk_level');
-        document.getElementById('label-chaos-bar').innerText = this.t('drunk_level');
+        document.getElementById('lbl-chaos').innerText = this.t('hype_level');
+        document.getElementById('label-chaos-bar').innerText = this.t('hype_level');
     },
 
     endFMEstaMode() {
-        this.players.forEach(p => p.budget = p.savedBudget + Math.floor(p.budget/2));
         let max = -1; let winnerId = null;
         this.players.forEach(p => {
             if(this.fmestaScores[p.id] > max) { max = this.fmestaScores[p.id]; winnerId = p.id; }
@@ -547,6 +616,9 @@ const game = {
 
     nextTurn() {
         this.processing = false;
+        this.resetMods(); // Clear modifiers for new player
+        this.cutMode.active = false; this.cutMode.firstNode = null;
+
         if (this.isFMEstaMode) {
             if (this.queue.length === 0) { this.endParty(); return; }
             const pid = this.queue[0]; 
@@ -560,51 +632,15 @@ const game = {
             if (!isFirstRoundNovatos) this.chaos = Math.min(100, this.chaos + 5);
         }
         
-        this.currentBoost = 0; this.targetNode = null;
+        this.targetNode = null;
         const banner = document.getElementById('turn-indicator');
         banner.innerText = `${this.currentPlayer.name}`; banner.style.color = this.currentPlayer.color;
         banner.style.textShadow = `0 0 25px ${this.currentPlayer.color}`;
-        document.getElementById('msg-idle').style.display = 'none';
-        document.getElementById('action-panel').style.display = 'flex';
-        document.getElementById('target-name').innerText = this.t('select_node');
+        document.getElementById('msg-idle').innerText = this.t('waiting');
+        document.getElementById('msg-idle').style.display = 'block';
+        document.getElementById('action-panel').style.display = 'none';
         
-        let subtitle = this.t('click_interact');
-        if(this.isFMEstaMode) subtitle = `${this.t('streak')}: ${this.currentPlayer.streak}`;
-        document.getElementById('target-sub').innerText = subtitle;
-        document.getElementById('prob-disp').innerText = "--";
-        document.getElementById('btn-roll').disabled = true;
-        document.getElementById('btn-pass').disabled = false;
-        document.getElementById('btn-beer').disabled = false;
-        document.getElementById('btn-shot').disabled = false;
-        document.querySelectorAll('.calc-val').forEach(el => el.innerText = "--");
         this.updateUI();
-    },
-
-    getMainComponent() {
-        if (this.nodes.length === 0) return new Set();
-        let visited = new Set(); let components = [];
-        for(let n of this.nodes) {
-            if (n.type !== 'player' && n.type !== 'prof' && n.type !== 'student') continue;
-            if (n.hidden) continue;
-            if (!visited.has(n.id)) {
-                let q = [n.id]; let comp = new Set();
-                visited.add(n.id); comp.add(n.id);
-                while(q.length > 0) {
-                    let curr = q.shift();
-                    this.edges.forEach(e => {
-                        if(e.hidden) return;
-                        let neighbor = null;
-                        if(e.source === curr) neighbor = e.target;
-                        else if(e.target === curr) neighbor = e.source;
-                        if(neighbor !== null && !visited.has(neighbor)) { visited.add(neighbor); comp.add(neighbor); q.push(neighbor); }
-                    });
-                }
-                components.push(comp);
-            }
-        }
-        if (components.length === 0) return new Set();
-        components.sort((a,b) => b.size - a.size);
-        return components[0];
     },
 
     handleInput(x, y) {
@@ -614,7 +650,44 @@ const game = {
         const hitRadius = 20 / this.camera.zoom;
         const clicked = this.nodes.find(n => (n.x-wx)**2 + (n.y-wy)**2 < (n.radius + hitRadius)**2);
 
+        // --- LOGICA DE TALLAR VINCLES ---
+        if(this.cutMode.active && clicked) {
+            if(!this.cutMode.firstNode) {
+                this.cutMode.firstNode = clicked;
+                this.notify(this.t('select_node') + " 2", "#ffaa00");
+            } else {
+                if (clicked === this.cutMode.firstNode) return;
+                const edgeIdx = this.edges.findIndex(e => !e.hidden && (
+                    (e.source === this.cutMode.firstNode.id && e.target === clicked.id) ||
+                    (e.source === clicked.id && e.target === this.cutMode.firstNode.id)
+                ));
+                
+                if(edgeIdx > -1) {
+                    this.edges.splice(edgeIdx, 1);
+                    this.log(`${this.currentPlayer.name} ${this.t('log_cut')} ${this.cutMode.firstNode.name} & ${clicked.name}`);
+                    // NOTIFICACIÓ D'ACCIÓ GRATUÏTA
+                    this.notify(this.t('action_free'), "var(--neon-secondary)");
+                    this.cutMode.active = false;
+                    this.cutMode.firstNode = null;
+                    this.recalcScores(); this.draw();
+                    // NO cridem nextTurn(), per tant és gratuït.
+                    // Assegurem que la UI torni a l'estat d'espera
+                    document.getElementById('msg-idle').style.display = 'block';
+                    document.getElementById('action-panel').style.display = 'none';
+                    this.targetNode = null;
+                } else {
+                    this.notify("NO HI HA VINCLE", "red");
+                    this.cutMode.firstNode = null;
+                }
+            }
+            return;
+        }
+
+        // --- SELECCIÓ NORMAL ---
         if (clicked && clicked.type !== 'player' && !clicked.hidden) {
+            document.getElementById('msg-idle').style.display = 'none';
+            document.getElementById('action-panel').style.display = 'flex';
+            
             if (this.isFMEstaMode) {
                 if (!clicked.isTemporary) return;
                 const alreadyMine = this.edges.some(e => e.target === clicked.id && e.owner === this.currentPlayer);
@@ -639,7 +712,7 @@ const game = {
                     const isTutorial = (this.partyIndex === 0 && myEdges.length === 0);
                     const isHawaiian = (this.partyIndex === 4);
                     
-                    if (!isTutorial && !isHawaiian && !isIsolatedOrSmall && !reachable.has(clicked.id)) {
+                    if (!this.activeModifiers.popular && !isTutorial && !isHawaiian && !isIsolatedOrSmall && !reachable.has(clicked.id)) {
                         this.notify(this.t('notify_too_far'), "#ffaa00"); 
                         return; 
                     }
@@ -654,6 +727,41 @@ const game = {
             this.updateControlDeck();
         }
     },
+    
+    // --- MODIFIER FUNCTIONS ---
+    addMod(val) {
+        if(this.processing) return;
+        this.activeModifiers.val += val;
+        this.updateControlDeck();
+    },
+    togglePop() {
+        if(this.processing) return;
+        this.activeModifiers.popular = !this.activeModifiers.popular;
+        document.getElementById('btn-pop').classList.toggle('active', this.activeModifiers.popular);
+        this.updateControlDeck();
+    },
+    toggleFire() {
+        if(this.processing) return;
+        this.activeModifiers.onFire = !this.activeModifiers.onFire;
+        document.getElementById('btn-fire').classList.toggle('active', this.activeModifiers.onFire);
+    },
+    resetMods() {
+        if(this.processing) return;
+        this.activeModifiers = { val: 0, popular: false, onFire: false };
+        document.querySelectorAll('.mod-btn').forEach(b => b.classList.remove('active'));
+        this.updateControlDeck();
+    },
+    enableCutMode() {
+        if(this.processing) return;
+        this.cutMode.active = true;
+        this.cutMode.firstNode = null;
+        this.notify(this.t('cut_mode'), "#ffaa00");
+    },
+    toggleRules() {
+        const r = document.getElementById('rules-overlay');
+        r.style.display = (r.style.display === 'flex') ? 'none' : 'flex';
+    },
+
     updateControlDeck() {
         if (!this.targetNode) return;
         document.getElementById('target-name').innerText = this.targetNode.name.toUpperCase();
@@ -669,15 +777,17 @@ const game = {
             document.getElementById('c-base').innerText = probs.base + "%";
             document.getElementById('c-diff').innerText = probs.diff + "%";
             
-            // --- FIX CAOS SIGN ---
-            // probs.chaos ja ve negatiu si és penalització (fmesta) o positiu si ajuda (normal)
             const chaosVal = probs.chaos;
-            const sign = chaosVal >= 0 ? "+" : ""; // El negatiu ja el porta el número
+            const sign = chaosVal >= 0 ? "+" : ""; 
             const chaosEl = document.getElementById('c-chaos');
             chaosEl.innerText = sign + chaosVal + "%";
             chaosEl.className = chaosVal >= 0 ? "calc-val pos" : "calc-val neg";
 
-            document.getElementById('c-boost').innerText = "+" + probs.boost + "%";
+            const boostVal = this.activeModifiers.val;
+            const bSign = boostVal >= 0 ? "+" : "";
+            const boostEl = document.getElementById('c-boost');
+            boostEl.innerText = bSign + boostVal + "%";
+            boostEl.className = boostVal >= 0 ? "calc-val pos" : "calc-val neg";
             
             let sub = this.t('cost_turn');
             if (this.isFMEstaMode) sub = `POPULARITAT: ${this.targetNode.coolness}`;
@@ -688,28 +798,20 @@ const game = {
             document.getElementById('target-sub').innerText = sub;
         }
     },
-    buyBoost(type) {
-        if(this.processing) return;
-        const cost = this.currentPlayer.hasGrant ? (type==='beer'?1:3) : (type==='beer'?2:5);
-        if (this.currentPlayer.budget >= cost) {
-            this.currentPlayer.budget -= cost; this.currentBoost += (type==='beer'?10:25);
-            this.updateControlDeck(); this.updateUI();
-        }
-    },
+
     calcProb() {
         if (this.isFMEstaMode) {
             let base = 80;
             let diff = this.targetNode.coolness; 
-            let penalty = this.currentPlayer.drunkenness * 10;
-            let total = base - diff - penalty + this.currentBoost;
-            // Return negative chaos (penalty) so display logic handles signs correctly
-            return { total: Math.max(5, Math.min(95, Math.floor(total))), base: base, diff: -diff, chaos: -penalty, boost: this.currentBoost, isTutorial: false };
+            let penalty = this.currentPlayer.hype * 10;
+            let total = base - diff - penalty + this.activeModifiers.val;
+            return { total: Math.max(5, Math.min(95, Math.floor(total))), base: base, diff: -diff, chaos: -penalty, isTutorial: false };
         }
 
         const myEdgeCount = this.edges.filter(e => e.owner === this.currentPlayer).length;
-        if (this.partyIndex === 0 && myEdgeCount === 0) return { total: 100, base: 100, diff: 0, chaos: 0, boost: 0, isTutorial: true };
+        if (this.partyIndex === 0 && myEdgeCount === 0) return { total: 100, base: 100, diff: 0, chaos: 0, isTutorial: true };
         
-        let base = 40;
+        let base = 70;
         if (this.edges.find(e => e.target === this.targetNode.id && e.owner === this.currentPlayer)) base += 30;
         
         let diff = this.getNodeDegree(this.targetNode.id) * 5;
@@ -717,8 +819,8 @@ const game = {
         if(this.targetNode.isGolden) diff += 15;
 
         let chaosBonus = Math.floor(this.chaos * 0.5);
-        let total = base - diff + chaosBonus + this.currentBoost;
-        return { total: Math.max(5, Math.min(95, Math.floor(total))), base: base, diff: -diff, chaos: chaosBonus, boost: this.currentBoost, isTutorial: false };
+        let total = base - diff + chaosBonus + this.activeModifiers.val;
+        return { total: Math.max(5, Math.min(95, Math.floor(total))), base: base, diff: -diff, chaos: chaosBonus, isTutorial: false };
     },
 
     startSequence() {
@@ -726,8 +828,6 @@ const game = {
         this.processing = true;
         document.getElementById('btn-roll').disabled = true;
         document.getElementById('btn-pass').disabled = true;
-        document.getElementById('btn-beer').disabled = true;
-        document.getElementById('btn-shot').disabled = true;
 
         const probs = this.calcProb();
         const isSuccess = probs.isTutorial || (Math.random() * 100 <= probs.total);
@@ -755,10 +855,31 @@ const game = {
                 clearInterval(interval);
                 content.style.opacity = 0;
                 setTimeout(() => {
-                    resText.innerText = isSuccess ? this.t('success') : this.t('rejected');
-                    resText.style.color = isSuccess ? "var(--neon-secondary)" : "#ff0055";
+                    if (isSuccess) {
+                        resText.innerText = this.t('success');
+                        resText.style.color = "var(--neon-secondary)";
+                    } else if (!isSuccess && this.activeModifiers.onFire) {
+                         resText.innerText = this.t('retry');
+                         resText.style.color = "#ffaa00";
+                    } else {
+                        resText.innerText = this.t('rejected');
+                        resText.style.color = "#ff0055";
+                    }
+                    
                     resText.style.opacity = 1; resText.style.transform = 'scale(1)';
-                    setTimeout(() => { overlay.style.display = 'none'; this.finalizeMove(isSuccess); }, 1000);
+                    setTimeout(() => { 
+                        overlay.style.display = 'none'; 
+                        if(!isSuccess && this.activeModifiers.onFire) {
+                            this.processing = false;
+                            this.activeModifiers.onFire = false;
+                            document.getElementById('btn-fire').classList.remove('active');
+                            document.getElementById('btn-roll').disabled = false;
+                            document.getElementById('btn-pass').disabled = false;
+                            this.notify("RETRY UNLOCKED", "#ffaa00");
+                        } else {
+                            this.finalizeMove(isSuccess); 
+                        }
+                    }, 1000);
                 }, 200);
             }
         }, 20);
@@ -771,7 +892,7 @@ const game = {
                 this.currentPlayer.turnsThisParty++;
             } else {
                 this.fmestaScores[this.currentPlayer.id]++;
-                this.currentPlayer.drunkenness++; 
+                this.currentPlayer.hype++; 
                 this.currentPlayer.streak++;
                 this.targetNode.coolness += 5;
                 this.notify(`${this.targetNode.name} ${this.t('notify_hype')}`, "gold");
@@ -784,7 +905,7 @@ const game = {
             if (!this.isFMEstaMode) {
                 if(this.currentPlayer.turnsThisParty < CONFIG.maxTurnsPerParty) this.queue.push(this.currentPlayer.id);
             } 
-            this.detectCliques(); this.recalcScores();
+            this.recalcScores();
         } else {
             this.log(`${this.currentPlayer.name} ${this.t('log_rej')} ${this.targetNode.name}`);
             if (this.isFMEstaMode) this.queue.shift(); 
@@ -810,13 +931,6 @@ const game = {
                 if (target) e.owner.score += target.coolness; 
             } 
         });
-        if (!this.isFMEstaMode) {
-            this.players.forEach(p => {
-                const pNode = this.nodes[p.nodeId];
-                const tris = this.cliques.filter(c => c.includes(pNode)).length;
-                p.score += (tris * 15);
-            });
-        }
         this.players.forEach(p => { if(p.hasGrant) p.score = Math.floor(p.score * 1.2); });
         this.updateUI();
     },
@@ -829,8 +943,9 @@ const game = {
             this.players.forEach(p => {
                 const goldenEdges = this.edges.filter(e => e.owner === p && this.nodes[e.target].isGolden);
                 if (goldenEdges.length > 0) {
-                    p.fixedPoints += (goldenEdges.length * 20);
-                    this.notify(`${p.name} +${goldenEdges.length * 20} PTS (${this.t('notify_gold')})`, "gold");
+                    // --- UPDATE: DAURAT ARA 30 PTS ---
+                    p.fixedPoints += (goldenEdges.length * 30);
+                    this.notify(`${p.name} +${goldenEdges.length * 30} PTS (${this.t('notify_gold')})`, "gold");
                 }
             });
         }
@@ -845,7 +960,34 @@ const game = {
             }
         }
         if(this.partyIndex < CONFIG.parties.length - 1) setTimeout(() => this.startParty(this.partyIndex + 1), 3000);
-        else this.triggerCredits();
+        else this.triggerObjectivePhase();
+    },
+
+    triggerObjectivePhase() {
+        const objOverlay = document.getElementById('objective-overlay');
+        const container = document.getElementById('obj-list-container');
+        container.innerHTML = '';
+        
+        this.players.forEach(p => {
+            const row = document.createElement('div');
+            row.className = 'obj-row';
+            row.innerHTML = `<span style="color:${p.color}; font-weight:bold; font-size:1.2rem">${p.name}</span>
+                             <input type="number" id="obj-score-${p.id}" class="obj-input" value="0" step="10">`;
+            container.appendChild(row);
+        });
+        
+        objOverlay.style.display = 'flex';
+    },
+
+    finalizeGame() {
+        this.players.forEach(p => {
+            const input = document.getElementById(`obj-score-${p.id}`);
+            const bonus = parseInt(input.value) || 0;
+            p.fixedPoints += bonus;
+        });
+        document.getElementById('objective-overlay').style.display = 'none';
+        this.recalcScores();
+        this.triggerCredits();
     },
 
     saveScreenshot() {
@@ -891,17 +1033,6 @@ const game = {
         }, 15000); 
     },
 
-    detectCliques() {
-        this.cliques = [];
-        for(let i=0; i<this.nodes.length; i++) { for(let j=i+1; j<this.nodes.length; j++) { for(let k=j+1; k<this.nodes.length; k++) {
-            if(this.nodes[i].hidden || this.nodes[j].hidden || this.nodes[k].hidden) continue;
-            const a = this.nodes[i].id, b = this.nodes[j].id, c = this.nodes[k].id;
-            const ab = this.edges.some(e => !e.hidden && ((e.source===a && e.target===b) || (e.source===b && e.target===a)));
-            const bc = this.edges.some(e => !e.hidden && ((e.source===b && e.target===c) || (e.source===c && e.target===b)));
-            const ca = this.edges.some(e => !e.hidden && ((e.source===c && e.target===a) || (e.source===a && e.target===c)));
-            if(ab && bc && ca) this.cliques.push([this.nodes[i], this.nodes[j], this.nodes[k]]);
-        }}}
-    },
     getNodeDegree(id) { return this.edges.filter(e => !e.hidden && (e.source === id || e.target === id)).length; },
     getReachableNodes(start) {
         let q = [[start, 0]], visited = new Set(), res = new Set();
@@ -916,6 +1047,32 @@ const game = {
         }
         return res;
     },
+    getMainComponent() {
+        if (this.nodes.length === 0) return new Set();
+        let visited = new Set(); let components = [];
+        for(let n of this.nodes) {
+            if (n.type !== 'player' && n.type !== 'prof' && n.type !== 'student') continue;
+            if (n.hidden) continue;
+            if (!visited.has(n.id)) {
+                let q = [n.id]; let comp = new Set();
+                visited.add(n.id); comp.add(n.id);
+                while(q.length > 0) {
+                    let curr = q.shift();
+                    this.edges.forEach(e => {
+                        if(e.hidden) return;
+                        let neighbor = null;
+                        if(e.source === curr) neighbor = e.target;
+                        else if(e.target === curr) neighbor = e.source;
+                        if(neighbor !== null && !visited.has(neighbor)) { visited.add(neighbor); comp.add(neighbor); q.push(neighbor); }
+                    });
+                }
+                components.push(comp);
+            }
+        }
+        if (components.length === 0) return new Set();
+        components.sort((a,b) => b.size - a.size);
+        return components[0];
+    },
     notify(m, c="#fff") { const el=document.getElementById('notification'); el.innerText=m; el.style.color=c; el.style.opacity=1; setTimeout(()=>el.style.opacity=0, 2000); },
     log(m) { document.getElementById('log').insertAdjacentHTML('afterbegin', `<div>> ${m}</div>`); },
 
@@ -924,7 +1081,7 @@ const game = {
         [...this.players].sort((a,b)=>b.score-a.score).forEach(p => {
             pl.innerHTML += `<div class="card ${this.currentPlayer===p?'active':''}">
                 <div style="color:${p.color};font-weight:bold">${p.name} ${p.hasGrant?'🎓':''} ${p.fmeMultiplier>1?'★':''}</div>
-                <div style="display:flex;justify-content:space-between"><span>${p.score}</span><span style="color:var(--neon-secondary)">€${p.budget}</span></div>
+                <div style="display:flex;justify-content:space-between"><span>${p.score} pts</span></div>
             </div>`;
         });
         const ql = document.getElementById('queue-list'); ql.innerHTML='';
@@ -943,7 +1100,7 @@ const game = {
         }
         
         if(this.currentPlayer && this.isFMEstaMode) {
-             document.getElementById('chaos-bar').style.width = (this.currentPlayer.drunkenness * 10)+"%";
+             document.getElementById('chaos-bar').style.width = (this.currentPlayer.hype * 10)+"%";
              document.getElementById('chaos-bar').style.background = "#ff0055";
         } else {
              document.getElementById('chaos-bar').style.width = this.chaos+"%";
@@ -977,12 +1134,6 @@ const game = {
         const ctx = this.ctx; ctx.clearRect(0,0,this.width,this.height); ctx.save();
         ctx.translate(this.width/2, this.height/2); ctx.scale(this.camera.zoom, this.camera.zoom); ctx.translate(-this.camera.x, -this.camera.y);
         
-        if(!this.isFMEstaMode) {
-            this.cliques.forEach(tri => {
-                ctx.beginPath(); ctx.moveTo(tri[0].x, tri[0].y); ctx.lineTo(tri[1].x, tri[1].y); ctx.lineTo(tri[2].x, tri[2].y);
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.15)'; ctx.fill();
-            });
-        }
         this.edges.forEach(e => {
             if(e.hidden) return;
             const s = this.nodes.find(n => n.id === e.source);
@@ -993,6 +1144,11 @@ const game = {
             } else { ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; ctx.lineWidth = 1.5/this.camera.zoom; ctx.globalAlpha = 1; }
             ctx.stroke(); ctx.globalAlpha = 1;
         });
+        // Draw Cut Mode Selection
+        if(this.cutMode.firstNode) {
+             ctx.beginPath(); ctx.arc(this.cutMode.firstNode.x, this.cutMode.firstNode.y, this.cutMode.firstNode.radius + 10, 0, Math.PI*2);
+             ctx.strokeStyle = '#ffaa00'; ctx.lineWidth = 4; ctx.stroke();
+        }
         if(this.currentPlayer && this.targetNode) {
             const s = this.nodes[this.currentPlayer.nodeId];
             ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(this.targetNode.x, this.targetNode.y);
@@ -1014,7 +1170,9 @@ const game = {
                     const mainComp = this.getMainComponent();
                     const isIsolated = degree <= 1 || !mainComp.has(n.id);
                     const isHawaiian = (this.partyIndex === 4);
-                    if(isHawaiian || isIsolated || reach.has(n.id)) { if(!n.isGolden && !n.isTemporary) ctx.fillStyle='#888'; }
+                    const isPop = this.activeModifiers.popular;
+                    if(!isPop && (isHawaiian || isIsolated || reach.has(n.id))) { if(!n.isGolden && !n.isTemporary) ctx.fillStyle='#888'; }
+                    else if (isPop && !n.isGolden && !n.isTemporary) ctx.fillStyle='#888'; 
                 }
             }
             if(this.targetNode===n) { ctx.strokeStyle='#fff'; ctx.lineWidth=3/this.camera.zoom; ctx.stroke(); }
@@ -1047,7 +1205,6 @@ window.addEventListener('mousemove', e => {
     }
 });
 
-// Init Default Text
 game.updateTexts();
 </script>
 </body>
